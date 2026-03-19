@@ -2,6 +2,7 @@
 
 import React, { FC } from "react";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
+import "ckeditor5/ckeditor5.css";
 
 import {
   ClassicEditor,
@@ -29,6 +30,9 @@ import {
   List,
   Font,
   FontFamily,
+  FontColor,
+  FontSize,
+  FontBackgroundColor,
   Mention,
   Paragraph,
   PasteFromOffice,
@@ -50,9 +54,10 @@ interface CkEditorProps {
 const CKEditorWrapper: FC<CkEditorProps> = ({ setEditorData, editorData }) => {
   return (
     <CKEditor
-        editor={ClassicEditor}
-        data={editorData}
-        config={{
+      editor={ClassicEditor}
+      data={editorData}
+      config={
+        {
           licenseKey: "GPL",
           plugins: [
             Alignment,
@@ -76,6 +81,9 @@ const CKEditorWrapper: FC<CkEditorProps> = ({ setEditorData, editorData }) => {
             Link,
             Font,
             FontFamily,
+            FontColor,
+            FontSize,
+            FontBackgroundColor,
             List,
             Mention,
             Paragraph,
@@ -128,65 +136,65 @@ const CKEditorWrapper: FC<CkEditorProps> = ({ setEditorData, editorData }) => {
               reversed: true,
             },
           },
-          extraPlugins: [
-            // Custom upload adapter để upload ảnh lên server
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            function (editor: any) {
-              // Đảm bảo FileRepository đã được load trước khi set upload adapter
-              editor.on("ready", () => {
-                const fileRepository = editor.plugins.get("FileRepository");
-                if (fileRepository) {
-                  fileRepository.createUploadAdapter = (
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    loader: any,
-                  ) => {
-                    return {
-                      upload: async () => {
-                        const file = await loader.file;
+          // extraPlugins: [
+          //   // Custom upload adapter để upload ảnh lên server
+          //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          //   function (editor: any) {
+          //     // Đảm bảo FileRepository đã được load trước khi set upload adapter
+          //     editor.on("ready", () => {
+          //       const fileRepository = editor.plugins.get("FileRepository");
+          //       if (fileRepository) {
+          //         fileRepository.createUploadAdapter = (
+          //           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          //           loader: any,
+          //         ) => {
+          //           return {
+          //             upload: async () => {
+          //               const file = await loader.file;
 
-                        // Validate file type
-                        if (!file.type.startsWith("image/")) {
-                          throw new Error("File must be an image");
-                        }
+          //               // Validate file type
+          //               if (!file.type.startsWith("image/")) {
+          //                 throw new Error("File must be an image");
+          //               }
 
-                        // Validate file size (max 10MB)
-                        if (file.size > 10 * 1024 * 1024) {
-                          throw new Error("Image size must be less than 10MB");
-                        }
+          //               // Validate file size (max 10MB)
+          //               if (file.size > 10 * 1024 * 1024) {
+          //                 throw new Error("Image size must be less than 10MB");
+          //               }
 
-                        try {
-                          // Upload image to server
-                          const response = await postService.uploadImage(
-                            file,
-                            "editor",
-                          );
+          //               try {
+          //                 // Upload image to server
+          //                 const response = await postService.uploadImage(
+          //                   file,
+          //                   "editor",
+          //                 );
 
-                          if (response.success && response.data) {
-                            const imageUrl =
-                              response.data.url ||
-                              response.data.result?.variants?.[0];
-                            return {
-                              default: imageUrl,
-                            };
-                          } else {
-                            throw new Error(
-                              response.error || "Failed to upload image",
-                            );
-                          }
-                        } catch (error) {
-                          console.error("Upload error:", error);
-                          throw error;
-                        }
-                      },
-                      abort: () => {
-                        // Handle abort if needed
-                      },
-                    };
-                  };
-                }
-              });
-            },
-          ],
+          //                 if (response.success && response.data) {
+          //                   const imageUrl =
+          //                     response.data.url ||
+          //                     response.data.result?.variants?.[0];
+          //                   return {
+          //                     default: imageUrl,
+          //                   };
+          //                 } else {
+          //                   throw new Error(
+          //                     response.error || "Failed to upload image",
+          //                   );
+          //                 }
+          //               } catch (error) {
+          //                 console.error("Upload error:", error);
+          //                 throw error;
+          //               }
+          //             },
+          //             abort: () => {
+          //               // Handle abort if needed
+          //             },
+          //           };
+          //         };
+          //       }
+          //     });
+          //   },
+          // ],
           heading: {
             options: [
               {
@@ -517,12 +525,14 @@ const CKEditorWrapper: FC<CkEditorProps> = ({ setEditorData, editorData }) => {
             // },
           },
           placeholder: "Type or paste your content here!",
-        }}
-        onChange={(_event, editor) => {
-          const data = editor.getData();
-          setEditorData(data);
-        }}
-      />
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- CKEditor EditorConfig augmentation not applied in aggregate package
+        } as any
+      }
+      onChange={(_event, editor) => {
+        const data = editor.getData();
+        setEditorData(data);
+      }}
+    />
   );
 };
 

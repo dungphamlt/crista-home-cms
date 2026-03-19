@@ -1,12 +1,25 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: [],
   images: {
     remotePatterns: [
-      { protocol: 'http', hostname: 'localhost', port: '3002', pathname: '/uploads/**' },
-      { protocol: 'https', hostname: '**', pathname: '/**' },
+      { protocol: "https", hostname: "**" },
+      { protocol: "http", hostname: "**" },
     ],
+  },
+  // ✅ Chỉ giữ 2 package này
+  transpilePackages: ["ckeditor5", "@ckeditor/ckeditor5-react"],
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.ignoreWarnings = [/dropdownRender.*deprecated.*popupRender/i];
+    }
+
+    config.module.rules.push({
+      test: /ckeditor5-[^/\\]+[/\\]theme[/\\]icons[/\\][^/\\]+\.svg$/,
+      type: "asset/source",
+    });
+
+    return config;
   },
 };
 

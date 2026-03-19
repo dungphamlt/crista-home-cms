@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ProductForm } from "@/components/ProductForm";
+import { ProductForm } from "@/components/products/ProductForm";
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -15,9 +15,7 @@ export default function NewProductPage() {
         </Link>
         <h1 className="text-2xl font-bold">Thêm sản phẩm</h1>
       </div>
-      <ProductForm
-        onSuccess={() => router.push("/products")}
-      />
+      <ProductForm onSuccess={() => router.push("/products")} />
     </div>
   );
 }

@@ -1,10 +1,9 @@
 "use client";
 
-import React, { FC, useEffect } from "react";
+import React, { FC } from "react";
 import dynamic from "next/dynamic";
-import "ckeditor5/ckeditor5.css";
 
-// Dynamic import để tránh SSR
+// Chỉ import CKEditor từ CKEditorWrapper - không import ckeditor5 ở đây để tránh duplicate modules
 const CKEditorComponent = dynamic(() => import("./CKEditorWrapper"), {
   ssr: false,
   loading: () => (

@@ -5,6 +5,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { api, endpoints } from "@/lib/api";
 import { postService } from "@/services/postService";
+import { useCategoriesAdmin, useProduct, useSaveProduct } from "@/hooks/useApi";
 
 const CkEditor = dynamic(() => import("@/components/ckeditor"), {
   ssr: false,
@@ -17,6 +18,7 @@ const CkEditor = dynamic(() => import("@/components/ckeditor"), {
 
 type Variant = { name: string; value?: string; image?: string; stock: number };
 type ProductFormData = {
+  sku: string;
   name: string;
   slug: string;
   description: string;
@@ -42,10 +44,9 @@ export function ProductForm({
   productId?: string;
   onSuccess: () => void;
 }) {
-  const [categories, setCategories] = useState<{ _id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(!!productId);
   const [form, setForm] = useState<ProductFormData>({
+    sku: "",
     name: "",
     slug: "",
     description: "",
@@ -64,47 +65,39 @@ export function ProductForm({
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    api
-      .get(endpoints.categoriesAdmin())
-      .then((res) => setCategories(res.data || []))
-      .catch(() => setCategories([]));
-  }, []);
+  const { data: categories = [] } = useCategoriesAdmin();
+  const { data: product, isLoading: fetching } = useProduct(productId);
 
   useEffect(() => {
-    if (productId) {
-      api
-        .get(endpoints.product(productId))
-        .then((res) => {
-          const p = res.data;
-          setForm({
-            name: p.name || "",
-            slug: p.slug || "",
-            description: p.description || "",
-            shortDescription: p.shortDescription || "",
-            images: p.images || [],
-            price: String(p.price ?? ""),
-            compareAtPrice: String(p.compareAtPrice ?? ""),
-            categories: (p.categories || []).map((c: { _id: string }) => c._id),
-            stock: String(p.stock ?? 0),
-            isActive: p.isActive ?? true,
-            isFeatured: p.isFeatured ?? false,
-            isNewArrival: p.isNewArrival ?? false,
-            order: String(p.order ?? 0),
-            variants: (p.variants || []).length
-              ? p.variants.map((v: Variant) => ({
-                  name: v.name || "",
-                  value: v.value || "",
-                  image: v.image || "",
-                  stock: v.stock ?? 0,
-                }))
-              : [],
-          });
-        })
-        .catch(() => {})
-        .finally(() => setFetching(false));
+    if (product) {
+      setForm({
+        sku: product.sku || "",
+        name: product.name || "",
+        slug: product.slug || "",
+        description: product.description || "",
+        shortDescription: product.shortDescription || "",
+        images: product.images || [],
+        price: String(product.price ?? ""),
+        compareAtPrice: String(product.compareAtPrice ?? ""),
+        categories: (product.categories || []).map(
+          (c: { _id: string }) => c._id,
+        ),
+        stock: String(product.stock ?? 0),
+        isActive: product.isActive ?? true,
+        isFeatured: product.isFeatured ?? false,
+        isNewArrival: product.isNewArrival ?? false,
+        order: String(product.order ?? 0),
+        variants: (product.variants || []).length
+          ? product.variants.map((v: Variant) => ({
+              name: v.name || "",
+              value: v.value || "",
+              image: v.image || "",
+              stock: v.stock ?? 0,
+            }))
+          : [],
+      });
     }
-  }, [productId]);
+  }, [product]);
 
   const update = (key: keyof ProductFormData, value: unknown) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -117,11 +110,15 @@ export function ProductForm({
   const removeVariant = (i: number) => {
     update(
       "variants",
-      form.variants.filter((_, idx) => idx !== i)
+      form.variants.filter((_, idx) => idx !== i),
     );
   };
 
-  const updateVariant = (i: number, key: keyof Variant, value: string | number) => {
+  const updateVariant = (
+    i: number,
+    key: keyof Variant,
+    value: string | number,
+  ) => {
     const next = [...form.variants];
     next[i] = { ...next[i], [key]: value };
     update("variants", next);
@@ -149,22 +146,27 @@ export function ProductForm({
   const removeImage = (index: number) => {
     update(
       "images",
-      form.images.filter((_, i) => i !== index)
+      form.images.filter((_, i) => i !== index),
     );
   };
+
+  const saveProduct = useSaveProduct(productId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       const payload = {
+        sku: form.sku || undefined,
         name: form.name,
         slug: form.slug || undefined,
         description: form.description || undefined,
         shortDescription: form.shortDescription || undefined,
         images: form.images,
         price: parseInt(form.price, 10) || 0,
-        compareAtPrice: form.compareAtPrice ? parseInt(form.compareAtPrice, 10) : undefined,
+        compareAtPrice: form.compareAtPrice
+          ? parseInt(form.compareAtPrice, 10)
+          : undefined,
         categories: form.categories,
         stock: parseInt(form.stock, 10) || 0,
         isActive: form.isActive,
@@ -174,17 +176,13 @@ export function ProductForm({
         variants: form.variants.filter((v) => v.name.trim()),
       };
 
-      if (productId) {
-        await api.put(endpoints.product(productId), payload);
-      } else {
-        await api.post("/products", payload);
-      }
+      await saveProduct.mutateAsync(payload);
       onSuccess();
     } catch (err: unknown) {
       const msg =
         err && typeof err === "object" && "response" in err
-          ? (err as { response?: { data?: { message?: string } } }).response?.data
-              ?.message
+          ? (err as { response?: { data?: { message?: string } } }).response
+              ?.data?.message
           : "Lưu thất bại";
       alert(msg || "Lưu thất bại");
     } finally {
@@ -192,12 +190,23 @@ export function ProductForm({
     }
   };
 
-  if (fetching) {
+  if (productId && fetching) {
     return <p className="text-gray-500">Đang tải...</p>;
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-4xl">
+      <div>
+        <label className="block font-medium mb-2">Mã sản phẩm</label>
+        <input
+          type="text"
+          value={form.sku}
+          onChange={(e) => update("sku", e.target.value)}
+          required
+          placeholder="VD: SP001"
+          className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
+        />
+      </div>
       <div>
         <label className="block font-medium mb-2">Tên sản phẩm *</label>
         <input
@@ -209,7 +218,9 @@ export function ProductForm({
         />
       </div>
       <div>
-        <label className="block font-medium mb-2">Slug (để trống = tự tạo)</label>
+        <label className="block font-medium mb-2">
+          Slug (để trống = tự tạo)
+        </label>
         <input
           type="text"
           value={form.slug}
@@ -267,7 +278,8 @@ export function ProductForm({
             <p className="text-gray-500">Đang tải lên...</p>
           ) : (
             <p className="text-gray-500">
-              Kéo thả ảnh vào đây hoặc <span className="text-amber-600 font-medium">chọn ảnh</span>
+              Kéo thả ảnh vào đây hoặc{" "}
+              <span className="text-amber-600 font-medium">chọn ảnh</span>
             </p>
           )}
         </div>
@@ -345,7 +357,7 @@ export function ProductForm({
                   } else {
                     update(
                       "categories",
-                      form.categories.filter((id) => id !== c._id)
+                      form.categories.filter((id) => id !== c._id),
                     );
                   }
                 }}
@@ -378,7 +390,9 @@ export function ProductForm({
               type="number"
               placeholder="Tồn kho"
               value={v.stock}
-              onChange={(e) => updateVariant(i, "stock", parseInt(e.target.value, 10) || 0)}
+              onChange={(e) =>
+                updateVariant(i, "stock", parseInt(e.target.value, 10) || 0)
+              }
               className="w-20 px-3 py-1 bg-white dark:bg-gray-700 border rounded"
             />
             <button

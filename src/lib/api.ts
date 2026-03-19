@@ -43,11 +43,19 @@ export const endpoints = {
     ).toString();
     return `/products?${search}`;
   },
-  productsAdmin: (params?: { page?: number; limit?: number }) => {
+  productsAdmin: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string;
+    isActive?: boolean;
+    isFeatured?: boolean;
+    isNewArrival?: boolean;
+  }) => {
     const p = params || {};
     const search = new URLSearchParams(
       Object.entries(p)
-        .filter(([, v]) => v != null)
+        .filter(([, v]) => v != null && v !== "")
         .map(([k, v]) => [k, String(v)]),
     ).toString();
     return `/products/admin${search ? `?${search}` : ""}`;

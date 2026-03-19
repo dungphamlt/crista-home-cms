@@ -13,11 +13,11 @@ export default function DashboardLayout({
   const { token, isReady } = useAuth();
   const router = useRouter();
 
-  // useEffect(() => {
-  //   if (isReady && !token) {
-  //     router.replace('/login');
-  //   }
-  // }, [token, isReady, router]);
+  useEffect(() => {
+    if (isReady && !token) {
+      router.replace("/login");
+    }
+  }, [token, isReady, router]);
 
   if (!isReady) {
     return (

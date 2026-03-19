@@ -18,7 +18,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setToken = (t: string | null) => {
-    console.log("setToken", t);
     if (t) localStorage.setItem("admin_token", t);
     else localStorage.removeItem("admin_token");
     setTokenState(t);
