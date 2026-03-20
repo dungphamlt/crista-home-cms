@@ -30,8 +30,15 @@ api.interceptors.response.use(
 
 export const endpoints = {
   login: () => "/auth/login",
-  categories: (withCount?: boolean) =>
-    `/categories${withCount ? "?withCount=true" : ""}`,
+  categories: (params?: { withCount?: boolean; parent?: string }) => {
+    const p = params || {};
+    const search = new URLSearchParams(
+      Object.entries(p)
+        .filter(([, v]) => v != null)
+        .map(([k, v]) => [k, String(v)]),
+    ).toString();
+    return `/categories${search ? `?${search}` : ""}`;
+  },
   categoriesAdmin: () => "/categories/admin/all",
   category: (id: string) => `/categories/${id}`,
   products: (params?: Record<string, string | number>) => {
@@ -83,6 +90,7 @@ export const endpoints = {
   coupon: (id: string) => `/coupons/${id}`,
   banners: () => "/banners",
   bannersAdmin: () => "/banners/admin/all",
+  banner: (id: string) => `/banners/${id}`,
   blogs: (page?: number) => `/blogs${page ? `?page=${page}` : ""}`,
   blogsAdmin: (page?: number) => `/blogs/admin${page ? `?page=${page}` : ""}`,
   blog: (id: string) => `/blogs/${id}`,

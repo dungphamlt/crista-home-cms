@@ -20,7 +20,7 @@ export default function LoginPage() {
     try {
       const res = await api.post(endpoints.login(), { email, password });
       setToken(res.data.access_token);
-      router.push("/");
+      router.push("/products");
     } catch (err: unknown) {
       const msg =
         err && typeof err === "object" && "response" in err

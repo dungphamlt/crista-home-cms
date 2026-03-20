@@ -12,6 +12,9 @@ import { api, endpoints } from "@/lib/api";
 export const queryKeys = {
   dashboardStats: ["dashboard", "stats"] as const,
   categoriesAdmin: ["categories", "admin"] as const,
+  category: (id: string) => ["category", id] as const,
+  bannersAdmin: ["banners", "admin"] as const,
+  banner: (id: string) => ["banner", id] as const,
   productsAdmin: (params?: Record<string, unknown>) =>
     ["products", "admin", params ?? {}] as const,
   product: (id: string) => ["product", id] as const,
@@ -35,16 +38,148 @@ export function useDashboardStats() {
 }
 
 // Categories admin
+type CategoryAdmin = {
+  _id: string;
+  name: string;
+  slug?: string;
+  image?: string;
+  parent?: { _id: string; name: string } | null;
+};
+
 export function useCategoriesAdmin(
-  options?: Omit<UseQueryOptions<{ _id: string; name: string }[]>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<CategoryAdmin[]>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: queryKeys.categoriesAdmin,
-    queryFn: async () => {
+    queryFn: async (): Promise<CategoryAdmin[]> => {
       const res = await api.get(endpoints.categoriesAdmin());
       return res.data || [];
     },
     ...options,
+  });
+}
+
+// Single category
+export function useCategory(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.category(id ?? ""),
+    queryFn: async () => {
+      const res = await api.get(endpoints.category(id!));
+      return res.data;
+    },
+    enabled: !!id && enabled,
+  });
+}
+
+// Save category
+type CategoryPayload = {
+  name: string;
+  slug?: string;
+  parent?: string;
+  image?: string;
+};
+
+export function useSaveCategory(categoryId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: CategoryPayload) =>
+      categoryId
+        ? api.put(endpoints.category(categoryId), payload)
+        : api.post("/categories", payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.categoriesAdmin });
+      if (categoryId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.category(categoryId) });
+      }
+    },
+  });
+}
+
+// Banners admin
+export type BannerAdmin = {
+  _id: string;
+  title: string;
+  image?: string;
+  link?: string;
+  order?: number;
+  isActive?: boolean;
+};
+
+export function useBannersAdmin() {
+  return useQuery({
+    queryKey: queryKeys.bannersAdmin,
+    queryFn: async (): Promise<BannerAdmin[]> => {
+      const res = await api.get(endpoints.bannersAdmin());
+      return res.data || [];
+    },
+  });
+}
+
+export function useBanner(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.banner(id ?? ""),
+    queryFn: async () => {
+      const res = await api.get(endpoints.banner(id!));
+      return res.data;
+    },
+    enabled: !!id && enabled,
+  });
+}
+
+type BannerPayload = {
+  title: string;
+  image?: string;
+  link?: string;
+  order?: number;
+  isActive?: boolean;
+};
+
+export function useSaveBanner(bannerId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: BannerPayload) =>
+      bannerId
+        ? api.put(endpoints.banner(bannerId), payload)
+        : api.post("/banners", payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["banners"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bannersAdmin });
+      if (bannerId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.banner(bannerId) });
+      }
+    },
+  });
+}
+
+export function useDeleteBanner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.delete(endpoints.banner(id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["banners"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bannersAdmin });
+    },
+  });
+}
+
+export function useToggleBannerActive() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (banner: BannerAdmin) =>
+      api.put(endpoints.banner(banner._id), {
+        ...banner,
+        isActive: !banner.isActive,
+      }),
+    onSuccess: (_, banner) => {
+      queryClient.invalidateQueries({ queryKey: ["banners"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.bannersAdmin });
+      queryClient.invalidateQueries({ queryKey: queryKeys.banner(banner._id) });
+    },
   });
 }
 
