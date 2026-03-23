@@ -15,6 +15,9 @@ export const queryKeys = {
   category: (id: string) => ["category", id] as const,
   bannersAdmin: ["banners", "admin"] as const,
   banner: (id: string) => ["banner", id] as const,
+  pages: (params?: Record<string, unknown>) =>
+    ["pages", params ?? {}] as const,
+  page: (id: string) => ["page", id] as const,
   productsAdmin: (params?: Record<string, unknown>) =>
     ["products", "admin", params ?? {}] as const,
   product: (id: string) => ["product", id] as const,
@@ -179,6 +182,83 @@ export function useToggleBannerActive() {
       queryClient.invalidateQueries({ queryKey: ["banners"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.bannersAdmin });
       queryClient.invalidateQueries({ queryKey: queryKeys.banner(banner._id) });
+    },
+  });
+}
+
+// Pages
+type PageItem = {
+  _id: string;
+  name: string;
+  slug?: string;
+  content?: string;
+};
+
+type PagesResponse = {
+  data: PageItem[];
+  total: number;
+  totalPages: number;
+};
+
+export function usePages(params: { page?: number; limit?: number } = {}) {
+  const { page = 1, limit = 10 } = params;
+
+  return useQuery({
+    queryKey: queryKeys.pages({ page, limit }),
+    queryFn: async (): Promise<PagesResponse> => {
+      const res = await api.get(endpoints.pages({ page, limit }));
+      const raw = res.data;
+      const data = Array.isArray(raw) ? raw : raw?.data ?? [];
+      return {
+        data,
+        total: raw?.total ?? data.length,
+        totalPages: raw?.totalPages ?? 1,
+      };
+    },
+  });
+}
+
+export function usePage(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.page(id ?? ""),
+    queryFn: async () => {
+      const res = await api.get(endpoints.page(id!));
+      return res.data;
+    },
+    enabled: !!id && enabled,
+  });
+}
+
+type PagePayload = {
+  name: string;
+  slug?: string;
+  content?: string;
+};
+
+export function useSavePage(pageId?: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: PagePayload) =>
+      pageId
+        ? api.put(endpoints.page(pageId), payload)
+        : api.post("/pages", payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pages"] });
+      if (pageId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.page(pageId) });
+      }
+    },
+  });
+}
+
+export function useDeletePage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.delete(endpoints.page(id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pages"] });
     },
   });
 }

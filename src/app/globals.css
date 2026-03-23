@@ -1,7 +1,28 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 @layer components {
   .container {
     @apply max-w-7xl mx-auto px-4 md:px-8 lg:px-12 w-full;
   }
+}
+
+.ck-content ul,
+.ck-content ol {
+  padding-left: 20px;
+}
+
+.ck-content ul li {
+  line-height: 1.8;
+}
+.ck-content h1,
+.ck-content h2,
+.ck-content h3,
+.ck-content h4,
+.ck-content h5,
+.ck-content h6 {
+  margin-bottom: 10px;
+}
+
+.ck-content p {
+  line-height: 1.8;
 }

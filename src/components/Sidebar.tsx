@@ -12,6 +12,7 @@ const navItems = [
   { href: '/coupons', label: 'Mã giảm giá', icon: '🎫' },
   { href: '/banners', label: 'Banner', icon: '🖼️' },
   { href: '/blogs', label: 'Bài viết', icon: '📝' },
+  { href: '/pages', label: 'Trang', icon: '📄' },
   { href: '/reviews', label: 'Đánh giá', icon: '⭐' },
 ];
 
