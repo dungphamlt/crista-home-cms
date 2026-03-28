@@ -88,7 +88,7 @@ export default function ProductsPage() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Tên, mã SP, mô tả..."
+              placeholder="Tìm theo Tên hoặc Mã SP"
               className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"
             />
           </div>
