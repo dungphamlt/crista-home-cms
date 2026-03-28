@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
-import { AUTH_TOKEN_KEY, setAuthCookie } from "@/lib/auth-storage";
+import { useCookies } from "react-cookie";
+import { AUTH_TOKEN_KEY, AUTH_COOKIE_OPTIONS } from "@/lib/auth-storage";
 
 const AuthContext = createContext<{
   token: string | null;
@@ -10,6 +11,7 @@ const AuthContext = createContext<{
 }>({ token: null, setToken: () => {}, isReady: false });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [, setCookie, removeCookie] = useCookies([AUTH_TOKEN_KEY]);
   const [token, setTokenState] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
@@ -17,13 +19,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsReady(true);
     const fromStorage = localStorage.getItem(AUTH_TOKEN_KEY);
     setTokenState(fromStorage);
-    if (fromStorage) setAuthCookie(fromStorage);
-  }, []);
+    if (fromStorage) {
+      setCookie(AUTH_TOKEN_KEY, fromStorage, AUTH_COOKIE_OPTIONS);
+    }
+  }, [setCookie]);
 
   const setToken = (t: string | null) => {
     if (t) localStorage.setItem(AUTH_TOKEN_KEY, t);
     else localStorage.removeItem(AUTH_TOKEN_KEY);
-    setAuthCookie(t);
+    if (t) {
+      setCookie(AUTH_TOKEN_KEY, t, AUTH_COOKIE_OPTIONS);
+    } else {
+      removeCookie(AUTH_TOKEN_KEY, { path: "/" });
+    }
     setTokenState(t);
   };
 

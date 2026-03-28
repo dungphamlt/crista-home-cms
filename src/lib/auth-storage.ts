@@ -1,9 +1,19 @@
 /**
  * Token lưu localStorage (axios) + cookie (middleware / SSR).
  * Cookie không httpOnly để client đọc/ghi đồng bộ với AuthProvider.
+ * Ghi cookie qua react-cookie / universal-cookie (AuthProvider, clearAuth…).
  */
 
+import Cookies from "universal-cookie";
+
 export const AUTH_TOKEN_KEY = "admin_token";
+
+/** Dùng chung cho setCookie (react-cookie) và removeCookie */
+export const AUTH_COOKIE_OPTIONS = {
+  path: "/",
+  maxAge: 604800,
+  sameSite: "lax" as const,
+};
 
 /** Kiểm tra JWT hết hạn (chỉ đọc payload.exp, không verify chữ ký). Dùng được trong Edge middleware. */
 export function isJwtExpired(token: string): boolean {
@@ -21,15 +31,6 @@ export function isJwtExpired(token: string): boolean {
   }
 }
 
-export function setAuthCookie(token: string | null) {
-  if (typeof document === "undefined") return;
-  if (token) {
-    document.cookie = `${AUTH_TOKEN_KEY}=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
-  } else {
-    document.cookie = `${AUTH_TOKEN_KEY}=; path=/; max-age=0; SameSite=Lax`;
-  }
-}
-
 export function clearAuthAndRedirectToLogin() {
   if (typeof window === "undefined") return;
   try {
@@ -37,6 +38,6 @@ export function clearAuthAndRedirectToLogin() {
   } catch {
     /* ignore */
   }
-  setAuthCookie(null);
+  new Cookies().remove(AUTH_TOKEN_KEY, { path: "/" });
   window.location.href = "/login";
 }

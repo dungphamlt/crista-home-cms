@@ -4,6 +4,12 @@ import { AUTH_TOKEN_KEY, isJwtExpired } from "@/lib/auth-storage";
 
 const LOGIN_PATH = "/login";
 
+function safeNextPath(url: URL): string {
+  const next = url.searchParams.get("next");
+  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  return "/products";
+}
+
 function isPublicPath(pathname: string): boolean {
   if (pathname === LOGIN_PATH || pathname.startsWith(`${LOGIN_PATH}/`)) return true;
   return false;
@@ -24,7 +30,9 @@ export function middleware(request: NextRequest) {
 
   if (isPublicPath(pathname)) {
     if (token && !isJwtExpired(decodeURIComponent(token))) {
-      return NextResponse.redirect(new URL("/", request.url));
+      return NextResponse.redirect(
+        new URL(safeNextPath(request.nextUrl), request.url),
+      );
     }
     return NextResponse.next();
   }

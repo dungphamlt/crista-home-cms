@@ -32,7 +32,9 @@ export default function LoginPage() {
     try {
       const res = await api.post(endpoints.login(), { email, password });
       setToken(res.data.access_token);
-      router.push(getSafeNextPath());
+      // Full navigation so the cookie is sent on the next request; client router.push
+      // can reach middleware before the browser attaches the new cookie.
+      window.location.assign(getSafeNextPath());
     } catch (err: unknown) {
       const msg =
         err && typeof err === "object" && "response" in err
