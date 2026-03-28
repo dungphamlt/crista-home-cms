@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
+import { AUTH_TOKEN_KEY, setAuthCookie } from "@/lib/auth-storage";
 
 const AuthContext = createContext<{
   token: string | null;
@@ -14,12 +15,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setIsReady(true);
-    setTokenState(localStorage.getItem("admin_token"));
+    const fromStorage = localStorage.getItem(AUTH_TOKEN_KEY);
+    setTokenState(fromStorage);
+    if (fromStorage) setAuthCookie(fromStorage);
   }, []);
 
   const setToken = (t: string | null) => {
-    if (t) localStorage.setItem("admin_token", t);
-    else localStorage.removeItem("admin_token");
+    if (t) localStorage.setItem(AUTH_TOKEN_KEY, t);
+    else localStorage.removeItem(AUTH_TOKEN_KEY);
+    setAuthCookie(t);
     setTokenState(t);
   };
 

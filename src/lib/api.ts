@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearAuthAndRedirectToLogin } from "@/lib/auth-storage";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
 
@@ -21,8 +22,10 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401 && typeof window !== "undefined") {
-      // localStorage.removeItem("admin_token");
-      // window.location.href = "/login";
+      const url = String((err.config as { url?: string })?.url ?? "");
+      if (!url.includes("/auth/login")) {
+        clearAuthAndRedirectToLogin();
+      }
     }
     return Promise.reject(err);
   },

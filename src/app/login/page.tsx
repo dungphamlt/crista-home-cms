@@ -1,17 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api, endpoints } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
+function getSafeNextPath(): string {
+  if (typeof window === "undefined") return "/products";
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  return "/products";
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const { setToken } = useAuth();
+  const { setToken, token, isReady } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isReady || !token) return;
+    router.replace(getSafeNextPath());
+  }, [isReady, token, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +32,7 @@ export default function LoginPage() {
     try {
       const res = await api.post(endpoints.login(), { email, password });
       setToken(res.data.access_token);
-      router.push("/products");
+      router.push(getSafeNextPath());
     } catch (err: unknown) {
       const msg =
         err && typeof err === "object" && "response" in err
