@@ -9,6 +9,7 @@ const navItems = [
   { href: '/products', label: 'Sản phẩm', icon: '📦' },
   { href: '/categories', label: 'Danh mục', icon: '📁' },
   { href: '/orders', label: 'Đơn hàng', icon: '🛒' },
+  { href: '/users', label: 'Người dùng', icon: '👤' },
   { href: '/coupons', label: 'Mã giảm giá', icon: '🎫' },
   { href: '/banners', label: 'Banner', icon: '🖼️' },
   { href: '/blogs', label: 'Bài viết', icon: '📝' },

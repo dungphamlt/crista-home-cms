@@ -118,4 +118,14 @@ export const endpoints = {
   },
   pageBySlug: (slug: string) => `/pages/slug/${slug}`,
   page: (id: string) => `/pages/${id}`,
+  /** Danh sách user (admin) */
+  usersAdmin: (params?: { page?: number; limit?: number }) => {
+    const p = params || {};
+    const search = new URLSearchParams(
+      Object.entries(p)
+        .filter(([, v]) => v != null)
+        .map(([k, v]) => [k, String(v)]),
+    ).toString();
+    return `/users/admin${search ? `?${search}` : ""}`;
+  },
 };

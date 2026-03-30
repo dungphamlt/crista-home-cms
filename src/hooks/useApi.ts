@@ -21,6 +21,8 @@ export const queryKeys = {
   productsAdmin: (params?: Record<string, unknown>) =>
     ["products", "admin", params ?? {}] as const,
   product: (id: string) => ["product", id] as const,
+  usersAdmin: (params?: Record<string, unknown>) =>
+    ["users", "admin", params ?? {}] as const,
 };
 
 // Dashboard stats
@@ -361,6 +363,61 @@ type ProductPayload = {
   order: number;
   variants: Array<{ name: string; value?: string; image?: string; stock: number }>;
 };
+
+/** User (khách hàng / tài khoản) từ GET /users/admin — field có thể khác tùy backend */
+export type AdminUser = {
+  _id: string;
+  email?: string;
+  name?: string;
+  fullName?: string;
+  phone?: string;
+  avatar?: string;
+  role?: string;
+  /** ID tài khoản Google (OAuth) */
+  googleId?: string;
+  /** ID tài khoản Facebook (OAuth) */
+  facebookId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type UsersAdminResponse = {
+  data: AdminUser[];
+  total: number;
+  totalPages: number;
+};
+
+function normalizeUsersAdminPayload(raw: unknown): UsersAdminResponse {
+  if (Array.isArray(raw)) {
+    return {
+      data: raw as AdminUser[],
+      total: raw.length,
+      totalPages: 1,
+    };
+  }
+  if (raw && typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    const data = Array.isArray(o.data) ? (o.data as AdminUser[]) : [];
+    return {
+      data,
+      total: Number(o.total ?? data.length),
+      totalPages: Number(o.totalPages ?? 1),
+    };
+  }
+  return { data: [], total: 0, totalPages: 1 };
+}
+
+export function useUsersAdmin(params: { page?: number; limit?: number } = {}) {
+  const { page = 1, limit = 20 } = params;
+
+  return useQuery({
+    queryKey: queryKeys.usersAdmin({ page, limit }),
+    queryFn: async (): Promise<UsersAdminResponse> => {
+      const res = await api.get(endpoints.usersAdmin({ page, limit }));
+      return normalizeUsersAdminPayload(res.data);
+    },
+  });
+}
 
 export function useSaveProduct(productId?: string) {
   const queryClient = useQueryClient();
