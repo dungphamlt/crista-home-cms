@@ -16,7 +16,13 @@ const CkEditor = dynamic(() => import("@/components/ckeditor"), {
   ),
 });
 
-type Variant = { name: string; value?: string; image?: string; stock: number };
+type Variant = {
+  name: string;
+  value?: string;
+  sku?: string;
+  images: string[];
+  stock: number;
+};
 type ProductFormData = {
   sku: string;
   name: string;
@@ -24,8 +30,8 @@ type ProductFormData = {
   description: string;
   shortDescription: string;
   images: string[];
+  coverImage: string;
   price: string;
-  compareAtPrice: string;
   categories: string[];
   stock: string;
   isActive: boolean;
@@ -35,7 +41,19 @@ type ProductFormData = {
   variants: Variant[];
 };
 
-const emptyVariant: Variant = { name: "", value: "", image: "", stock: 0 };
+const emptyVariant: Variant = {
+  name: "",
+  value: "",
+  sku: "",
+  images: [],
+  stock: 0,
+};
+
+type UploadTarget =
+  | null
+  | { kind: "gallery" }
+  | { kind: "cover" }
+  | { kind: "variant"; index: number };
 
 export function ProductForm({
   productId,
@@ -52,18 +70,21 @@ export function ProductForm({
     description: "",
     shortDescription: "",
     images: [],
+    coverImage: "",
     price: "",
-    compareAtPrice: "",
     categories: [],
     stock: "0",
     isActive: true,
-    isFeatured: false,
-    isNewArrival: false,
+    isFeatured: true,
+    isNewArrival: true,
     order: "0",
     variants: [],
   });
-  const [uploading, setUploading] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState<UploadTarget>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const variantUploadIndexRef = useRef<number | null>(null);
+  const variantFileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: categories = [] } = useCategoriesAdmin();
   const { data: product, isLoading: fetching } = useProduct(productId);
@@ -77,8 +98,8 @@ export function ProductForm({
         description: product.description || "",
         shortDescription: product.shortDescription || "",
         images: product.images || [],
+        coverImage: product.coverImage || "",
         price: String(product.price ?? ""),
-        compareAtPrice: String(product.compareAtPrice ?? ""),
         categories: (product.categories || []).map(
           (c: { _id: string }) => c._id,
         ),
@@ -88,12 +109,21 @@ export function ProductForm({
         isNewArrival: product.isNewArrival ?? false,
         order: String(product.order ?? 0),
         variants: (product.variants || []).length
-          ? product.variants.map((v: Variant) => ({
-              name: v.name || "",
-              value: v.value || "",
-              image: v.image || "",
-              stock: v.stock ?? 0,
-            }))
+          ? product.variants.map((v: Variant & { image?: string }) => {
+              const legacy = v as { images?: string[]; image?: string };
+              const imgs = Array.isArray(legacy.images)
+                ? legacy.images
+                : legacy.image
+                  ? [legacy.image]
+                  : [];
+              return {
+                name: v.name || "",
+                value: v.value || "",
+                sku: v.sku || "",
+                images: imgs,
+                stock: v.stock ?? 0,
+              };
+            })
           : [],
       });
     }
@@ -114,19 +144,24 @@ export function ProductForm({
     );
   };
 
-  const updateVariant = (
-    i: number,
-    key: keyof Variant,
-    value: string | number,
-  ) => {
+  const updateVariant = (i: number, patch: Partial<Variant>) => {
     const next = [...form.variants];
-    next[i] = { ...next[i], [key]: value };
+    next[i] = { ...next[i], ...patch };
     update("variants", next);
   };
 
-  const handleImageUpload = async (files: FileList | null) => {
-    if (!files?.length || uploading) return;
-    setUploading(true);
+  const removeVariantImage = (variantIndex: number, imageIndex: number) => {
+    const next = [...form.variants];
+    const imgs = [...(next[variantIndex]?.images || [])];
+    imgs.splice(imageIndex, 1);
+    next[variantIndex] = { ...next[variantIndex], images: imgs };
+    update("variants", next);
+  };
+
+  const uploadImageFiles = async (
+    files: FileList | null,
+  ): Promise<string[]> => {
+    if (!files?.length) return [];
     const urls: string[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -136,11 +171,58 @@ export function ProductForm({
         urls.push(res.data.url);
       }
     }
-    if (urls.length) {
-      update("images", [...form.images, ...urls]);
+    return urls;
+  };
+
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files?.length || uploadTarget) return;
+    setUploadTarget({ kind: "gallery" });
+    try {
+      const urls = await uploadImageFiles(files);
+      if (urls.length) {
+        update("images", [...form.images, ...urls]);
+      }
+    } finally {
+      setUploadTarget(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-    setUploading(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleCoverUpload = async (files: FileList | null) => {
+    if (!files?.length || uploadTarget) return;
+    setUploadTarget({ kind: "cover" });
+    try {
+      const urls = await uploadImageFiles(files);
+      if (urls[0]) {
+        update("coverImage", urls[0]);
+      }
+    } finally {
+      setUploadTarget(null);
+      if (coverInputRef.current) coverInputRef.current.value = "";
+    }
+  };
+
+  const handleVariantImagesUpload = async (files: FileList | null) => {
+    const idx = variantUploadIndexRef.current;
+    if (idx == null || !files?.length || uploadTarget) return;
+    setUploadTarget({ kind: "variant", index: idx });
+    try {
+      const urls = await uploadImageFiles(files);
+      if (urls.length) {
+        setForm((prev) => {
+          const next = [...prev.variants];
+          next[idx] = {
+            ...next[idx],
+            images: [...(next[idx]?.images || []), ...urls],
+          };
+          return { ...prev, variants: next };
+        });
+      }
+    } finally {
+      setUploadTarget(null);
+      variantUploadIndexRef.current = null;
+      if (variantFileInputRef.current) variantFileInputRef.current.value = "";
+    }
   };
 
   const removeImage = (index: number) => {
@@ -163,17 +245,23 @@ export function ProductForm({
         description: form.description || undefined,
         shortDescription: form.shortDescription || undefined,
         images: form.images,
+        coverImage: form.coverImage.trim() || undefined,
         price: parseInt(form.price, 10) || 0,
-        compareAtPrice: form.compareAtPrice
-          ? parseInt(form.compareAtPrice, 10)
-          : undefined,
         categories: form.categories,
         stock: parseInt(form.stock, 10) || 0,
         isActive: form.isActive,
         isFeatured: form.isFeatured,
         isNewArrival: form.isNewArrival,
         order: parseInt(form.order, 10) || 0,
-        variants: form.variants.filter((v) => v.name.trim()),
+        variants: form.variants
+          .filter((v) => v.name.trim())
+          .map((v) => ({
+            name: v.name.trim(),
+            value: v.value?.trim() || undefined,
+            sku: v.sku?.trim() || undefined,
+            images: v.images,
+            stock: v.stock,
+          })),
       };
 
       await saveProduct.mutateAsync(payload);
@@ -272,10 +360,15 @@ export function ProductForm({
             e.currentTarget.classList.remove("ring-2", "ring-amber-500");
             handleImageUpload(e.dataTransfer.files);
           }}
-          className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors"
+          className={`border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors ${
+            uploadTarget ? "pointer-events-none opacity-70" : ""
+          }`}
         >
-          {uploading ? (
-            <p className="text-gray-500">Đang tải lên...</p>
+          {uploadTarget?.kind === "gallery" ? (
+            <p className="text-gray-600 dark:text-gray-300 flex items-center justify-center gap-2">
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+              Đang tải lên...
+            </p>
           ) : (
             <p className="text-gray-500">
               Kéo thả ảnh vào đây hoặc{" "}
@@ -310,7 +403,76 @@ export function ProductForm({
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label className="block font-medium mb-2">
+          Ảnh bìa / hero (tùy chọn)
+        </label>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+          Dùng làm ảnh đại diện khi biến thể chưa có ảnh — storefront có thể ưu
+          tiên ảnh biến thể khi chọn màu.
+        </p>
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept="image/*"
+          onChange={(e) => handleCoverUpload(e.target.files)}
+          className="hidden"
+        />
+        <div
+          onClick={() => coverInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.currentTarget.classList.add("ring-2", "ring-amber-500");
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove("ring-2", "ring-amber-500");
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.currentTarget.classList.remove("ring-2", "ring-amber-500");
+            handleCoverUpload(e.dataTransfer.files);
+          }}
+          className={`border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-amber-500 hover:bg-amber-50/50 dark:hover:bg-amber-900/10 transition-colors ${
+            uploadTarget ? "pointer-events-none opacity-70" : ""
+          }`}
+        >
+          {uploadTarget?.kind === "cover" ? (
+            <p className="text-gray-600 dark:text-gray-300 flex items-center justify-center gap-2">
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+              Đang tải lên...
+            </p>
+          ) : (
+            <p className="text-gray-500">
+              Kéo thả ảnh bìa vào đây hoặc{" "}
+              <span className="text-amber-600 font-medium">chọn ảnh</span>
+            </p>
+          )}
+        </div>
+        {form.coverImage ? (
+          <div className="mt-3 flex flex-wrap gap-3">
+            <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 group">
+              <Image
+                src={form.coverImage}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="80px"
+                unoptimized
+              />
+              <button
+                type="button"
+                onClick={() => update("coverImage", "")}
+                disabled={!!uploadTarget}
+                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-sm transition-opacity disabled:pointer-events-none disabled:opacity-0"
+              >
+                Xóa
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block font-medium mb-2">Giá (VNĐ) *</label>
           <input
@@ -318,16 +480,6 @@ export function ProductForm({
             value={form.price}
             onChange={(e) => update("price", e.target.value)}
             required
-            min={0}
-            className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
-          />
-        </div>
-        <div>
-          <label className="block font-medium mb-2">Giá so sánh (VNĐ)</label>
-          <input
-            type="number"
-            value={form.compareAtPrice}
-            onChange={(e) => update("compareAtPrice", e.target.value)}
             min={0}
             className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
           />
@@ -368,46 +520,138 @@ export function ProductForm({
         </div>
       </div>
       <div>
+        <input
+          ref={variantFileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => handleVariantImagesUpload(e.target.files)}
+        />
         <label className="block font-medium mb-2">Biến thể</label>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+          Mỗi biến thể có mã SKU riêng và gallery ảnh riêng (ví dụ mỗi màu một
+          bộ ảnh).
+        </p>
         {form.variants.map((v, i) => (
           <div
             key={i}
-            className="flex gap-2 items-center mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded"
+            className="mb-4 p-4 bg-gray-50 dark:bg-gray-800/80 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3"
           >
-            <input
-              placeholder="Tên (ví dụ: Màu đỏ)"
-              value={v.name}
-              onChange={(e) => updateVariant(i, "name", e.target.value)}
-              className="flex-1 px-3 py-1 bg-white dark:bg-gray-700 border rounded"
-            />
-            <input
-              placeholder="Giá trị (ví dụ: Đỏ)"
-              value={v.value || ""}
-              onChange={(e) => updateVariant(i, "value", e.target.value)}
-              className="flex-1 px-3 py-1 bg-white dark:bg-gray-700 border rounded"
-            />
-            <input
-              type="number"
-              placeholder="Tồn kho"
-              value={v.stock}
-              onChange={(e) =>
-                updateVariant(i, "stock", parseInt(e.target.value, 10) || 0)
-              }
-              className="w-20 px-3 py-1 bg-white dark:bg-gray-700 border rounded"
-            />
-            <button
-              type="button"
-              onClick={() => removeVariant(i)}
-              className="text-red-600 hover:underline"
-            >
-              Xóa
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Tên *
+                </label>
+                <input
+                  placeholder="VD: Xanh lá"
+                  value={v.name}
+                  onChange={(e) => updateVariant(i, { name: e.target.value })}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Giá trị / nhãn
+                </label>
+                <input
+                  placeholder="VD: (Xanh lá)"
+                  value={v.value || ""}
+                  onChange={(e) => updateVariant(i, { value: e.target.value })}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Mã SKU biến thể
+                </label>
+                <input
+                  placeholder="VD: 60234-G"
+                  value={v.sku || ""}
+                  onChange={(e) => updateVariant(i, { sku: e.target.value })}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border rounded font-mono text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Tồn kho
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={v.stock}
+                  onChange={(e) =>
+                    updateVariant(i, {
+                      stock: parseInt(e.target.value, 10) || 0,
+                    })
+                  }
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border rounded"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-2">
+                Ảnh biến thể (gallery)
+              </label>
+              <div className="flex flex-wrap gap-2 items-center">
+                {v.images.map((url, imgIdx) => (
+                  <div
+                    key={`${url}-${imgIdx}`}
+                    className="relative w-16 h-16 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 group shrink-0"
+                  >
+                    <Image
+                      src={url}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="64px"
+                      unoptimized
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeVariantImage(i, imgIdx)}
+                      className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs"
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                ))}
+                {uploadTarget?.kind === "variant" &&
+                uploadTarget.index === i ? (
+                  <div className="w-16 h-16 border-2 border-dashed border-amber-400 dark:border-amber-600 rounded-lg flex flex-col items-center justify-center gap-1 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50/80 dark:bg-amber-950/30 shrink-0">
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+                    Đang tải...
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      variantUploadIndexRef.current = i;
+                      variantFileInputRef.current?.click();
+                    }}
+                    disabled={!!uploadTarget}
+                    className="w-16 h-16 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-gray-400 text-xl hover:border-amber-500 hover:text-amber-600 disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    +
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => removeVariant(i)}
+                className="text-sm text-red-600 hover:underline"
+              >
+                Xóa biến thể
+              </button>
+            </div>
           </div>
         ))}
         <button
           type="button"
           onClick={addVariant}
-          className="text-amber-600 hover:underline text-sm"
+          className="text-amber-600 font-semibold hover:bg-amber-500/30 text-sm px-4 py-2 bg-amber-500/20 cursor-pointer rounded-lg"
         >
           + Thêm biến thể
         </button>

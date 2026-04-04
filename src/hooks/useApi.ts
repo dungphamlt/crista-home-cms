@@ -15,8 +15,7 @@ export const queryKeys = {
   category: (id: string) => ["category", id] as const,
   bannersAdmin: ["banners", "admin"] as const,
   banner: (id: string) => ["banner", id] as const,
-  pages: (params?: Record<string, unknown>) =>
-    ["pages", params ?? {}] as const,
+  pages: (params?: Record<string, unknown>) => ["pages", params ?? {}] as const,
   page: (id: string) => ["page", id] as const,
   productsAdmin: (params?: Record<string, unknown>) =>
     ["products", "admin", params ?? {}] as const,
@@ -52,7 +51,7 @@ type CategoryAdmin = {
 };
 
 export function useCategoriesAdmin(
-  options?: Omit<UseQueryOptions<CategoryAdmin[]>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<CategoryAdmin[]>, "queryKey" | "queryFn">,
 ) {
   return useQuery({
     queryKey: queryKeys.categoriesAdmin,
@@ -96,7 +95,9 @@ export function useSaveCategory(categoryId?: string) {
       queryClient.invalidateQueries({ queryKey: ["categories"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.categoriesAdmin });
       if (categoryId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.category(categoryId) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.category(categoryId),
+        });
       }
     },
   });
@@ -210,7 +211,7 @@ export function usePages(params: { page?: number; limit?: number } = {}) {
     queryFn: async (): Promise<PagesResponse> => {
       const res = await api.get(endpoints.pages({ page, limit }));
       const raw = res.data;
-      const data = Array.isArray(raw) ? raw : raw?.data ?? [];
+      const data = Array.isArray(raw) ? raw : (raw?.data ?? []);
       return {
         data,
         total: raw?.total ?? data.length,
@@ -285,8 +286,11 @@ type ProductsAdminResponse = {
     price: number;
     compareAtPrice?: number;
     images?: string[];
+    coverImage?: string;
     shortDescription?: string;
     stock?: number;
+    variantCount?: number;
+    variants?: { stock?: number }[];
     isActive?: boolean;
     isFeatured?: boolean;
     isNewArrival?: boolean;
@@ -297,7 +301,15 @@ type ProductsAdminResponse = {
 };
 
 export function useProductsAdmin(params: ProductsAdminParams = {}) {
-  const { page = 1, limit = 10, search, category, isActive, isFeatured, isNewArrival } = params;
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    category,
+    isActive,
+    isFeatured,
+    isNewArrival,
+  } = params;
   const queryParams = {
     page,
     limit,
@@ -346,6 +358,15 @@ export function useDeleteProduct() {
   });
 }
 
+/** Khớp ProductVariant ở backend — mỗi biến thể có SKU & gallery riêng */
+export type ProductVariantPayload = {
+  name: string;
+  value?: string;
+  sku?: string;
+  images: string[];
+  stock: number;
+};
+
 type ProductPayload = {
   sku?: string;
   name: string;
@@ -353,15 +374,16 @@ type ProductPayload = {
   description?: string;
   shortDescription?: string;
   images: string[];
+  /** Ảnh bìa / hero (tùy chọn) */
+  coverImage?: string;
   price: number;
-  compareAtPrice?: number;
   categories: string[];
   stock: number;
   isActive: boolean;
   isFeatured: boolean;
   isNewArrival: boolean;
   order: number;
-  variants: Array<{ name: string; value?: string; image?: string; stock: number }>;
+  variants: ProductVariantPayload[];
 };
 
 /** User (khách hàng / tài khoản) từ GET /users/admin — field có thể khác tùy backend */
@@ -431,7 +453,9 @@ export function useSaveProduct(productId?: string) {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboardStats });
       if (productId) {
-        queryClient.invalidateQueries({ queryKey: queryKeys.product(productId) });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.product(productId),
+        });
       }
     },
   });

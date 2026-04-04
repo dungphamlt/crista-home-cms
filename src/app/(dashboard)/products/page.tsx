@@ -12,6 +12,16 @@ import { ProductDetailModal } from "@/components/products/ProductDetailModal";
 
 const PAGE_SIZE = 10;
 
+function displayStock(
+  productStock: number | undefined,
+  variants: { stock?: number }[] | undefined,
+) {
+  if (variants?.length) {
+    return variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+  }
+  return productStock ?? 0;
+}
+
 export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -173,14 +183,14 @@ export default function ProductsPage() {
         <p>Đang tải...</p>
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto">
-          <table className="w-full min-w-[800px]">
+          <table className="w-full min-w-[720px]">
             <thead className="bg-gray-100 dark:bg-gray-700">
               <tr>
                 <th className="text-left p-4 w-16">Ảnh</th>
                 <th className="text-left p-4 w-24">Mã SP</th>
-                <th className="text-left p-4">Tên</th>
-                <th className="text-left p-4">Mô tả</th>
+                <th className="text-left p-4 min-w-[200px]">Tên</th>
                 <th className="text-left p-4">Giá</th>
+                <th className="text-left p-4 w-28">Số biến thể</th>
                 <th className="text-left p-4">Tồn kho</th>
                 <th className="text-left p-4">Trạng thái</th>
                 <th className="text-right p-4">Thao tác</th>
@@ -193,10 +203,10 @@ export default function ProductsPage() {
                   className="border-t border-gray-200 dark:border-gray-700"
                 >
                   <td className="p-4">
-                    {p.images?.[0] ? (
+                    {p.coverImage || p.images?.[0] ? (
                       <div className="relative w-12 h-12 rounded overflow-hidden bg-gray-100">
                         <Image
-                          src={p.images[0]}
+                          src={p.coverImage || p.images?.[0] || ""}
                           alt={p.name}
                           fill
                           className="object-cover"
@@ -216,32 +226,24 @@ export default function ProductsPage() {
                     </span>
                   </td>
                   <td
-                    className="p-4 max-w-[180px]"
+                    className="p-4 min-w-[200px]"
                     onClick={() => setViewingProductId(p._id)}
                   >
                     <p className="font-medium line-clamp-2 cursor-pointer hover:underline">
                       {p.name}
                     </p>
                   </td>
-                  <td className="p-4 max-w-[200px]">
-                    <p className="text-sm text-gray-500 line-clamp-2">
-                      {p.shortDescription || "-"}
-                    </p>
-                  </td>
                   <td className="p-4">
                     <span className="text-red-600 font-medium">
                       {new Intl.NumberFormat("vi-VN").format(p.price)}đ
                     </span>
-                    {/* {p.compareAtPrice && p.compareAtPrice > p.price && (
-                      <span className="ml-2 text-sm text-gray-400 line-through">
-                        {new Intl.NumberFormat("vi-VN").format(
-                          p.compareAtPrice,
-                        )}
-                        đ
-                      </span>
-                    )} */}
                   </td>
-                  <td className="p-4">{p.stock ?? 0}</td>
+                  <td className="p-4 tabular-nums">
+                    {p.variantCount ?? p.variants?.length ?? 0}
+                  </td>
+                  <td className="p-4 tabular-nums">
+                    {displayStock(p.stock, p.variants)}
+                  </td>
                   <td className="p-4">
                     <span
                       className={`px-2 py-1 rounded text-sm ${
