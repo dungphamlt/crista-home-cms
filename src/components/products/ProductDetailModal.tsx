@@ -312,6 +312,34 @@ export function ProductDetailModal({
                         đ
                       </span>
                     </p>
+                    {product.wholesalePrice != null &&
+                      product.wholesalePrice > 0 && (
+                        <p>
+                          <span className="font-medium text-gray-700 dark:text-gray-300">
+                            Giá bán sỉ:
+                          </span>{" "}
+                          <span className="font-medium">
+                            {new Intl.NumberFormat("vi-VN").format(
+                              product.wholesalePrice,
+                            )}
+                            đ
+                          </span>
+                        </p>
+                      )}
+                    {product.bulkWholesalePrice != null &&
+                      product.bulkWholesalePrice > 0 && (
+                        <p>
+                          <span className="font-medium text-gray-700 dark:text-gray-300">
+                            Giá sỉ lô / SL lớn:
+                          </span>{" "}
+                          <span className="font-medium">
+                            {new Intl.NumberFormat("vi-VN").format(
+                              product.bulkWholesalePrice,
+                            )}
+                            đ
+                          </span>
+                        </p>
+                      )}
                     <p>
                       <span className="font-medium text-gray-700 dark:text-gray-300">
                         {variants.length > 0 ? "Tổng tồn kho:" : "Tồn kho:"}

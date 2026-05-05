@@ -118,14 +118,36 @@ export const endpoints = {
   },
   pageBySlug: (slug: string) => `/pages/slug/${slug}`,
   page: (id: string) => `/pages/${id}`,
-  /** Danh sách user (admin) */
-  usersAdmin: (params?: { page?: number; limit?: number }) => {
+  usersAdminCustomers: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) => {
     const p = params || {};
     const search = new URLSearchParams(
       Object.entries(p)
-        .filter(([, v]) => v != null)
+        .filter(([, v]) => v != null && v !== "")
         .map(([k, v]) => [k, String(v)]),
     ).toString();
-    return `/users/admin${search ? `?${search}` : ""}`;
+    return `/users/admin/users${search ? `?${search}` : ""}`;
   },
+  usersAdminAdmins: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) => {
+    const p = params || {};
+    const search = new URLSearchParams(
+      Object.entries(p)
+        .filter(([, v]) => v != null && v !== "")
+        .map(([k, v]) => [k, String(v)]),
+    ).toString();
+    return `/users/admin/admins${search ? `?${search}` : ""}`;
+  },
+  usersAdminMe: () => "/users/admin/me",
+  /** POST — body `{ email, password, name? }` */
+  usersAdminCreate: () => "/users/admin",
+  userAdmin: (id: string) => `/users/admin/${id}`,
+  userAdminMePassword: () => "/users/admin/me/password",
+  userAdminPassword: (id: string) => `/users/admin/${id}/password`,
 };

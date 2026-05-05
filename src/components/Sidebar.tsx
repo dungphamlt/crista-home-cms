@@ -17,9 +17,24 @@ const navItems = [
   { href: '/reviews', label: 'Đánh giá', icon: '⭐' },
 ];
 
+const adminNavItem = {
+  href: '/users/admins',
+  label: 'Quản lý admin',
+  icon: '🛡️',
+};
+
+function navLinkActive(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  if (href === "/users") return pathname === "/users";
+  if (href === "/users/admins") {
+    return pathname === "/users/admins" || pathname.startsWith("/users/admins/");
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function Sidebar() {
   const pathname = usePathname();
-  const { setToken } = useAuth();
+  const { setToken, isAdminSession } = useAuth();
 
   const handleLogout = () => {
     setToken(null);
@@ -38,7 +53,7 @@ export function Sidebar() {
             key={item.href}
             href={item.href}
             className={`flex items-center gap-3 px-4 py-2 rounded-lg transition ${
-              pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
+              navLinkActive(pathname, item.href)
                 ? 'bg-amber-600 text-white'
                 : 'hover:bg-gray-800'
             }`}
@@ -47,8 +62,32 @@ export function Sidebar() {
             {item.label}
           </Link>
         ))}
+        {isAdminSession && (
+          <Link
+            href={adminNavItem.href}
+            className={`flex items-center gap-3 px-4 py-2 rounded-lg transition ${
+              navLinkActive(pathname, adminNavItem.href)
+                ? 'bg-amber-600 text-white'
+                : 'hover:bg-gray-800'
+            }`}
+          >
+            <span>{adminNavItem.icon}</span>
+            {adminNavItem.label}
+          </Link>
+        )}
       </nav>
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-4 border-t border-gray-700 space-y-1">
+        <Link
+          href="/settings/password"
+          className={`flex items-center gap-3 px-4 py-2 rounded-lg transition ${
+            pathname === "/settings/password"
+              ? "bg-amber-600 text-white"
+              : "hover:bg-gray-800"
+          }`}
+        >
+          <span>🔑</span>
+          Đổi mật khẩu
+        </Link>
         <button
           onClick={handleLogout}
           className="w-full py-2 text-left px-4 rounded-lg hover:bg-gray-800 text-red-400"

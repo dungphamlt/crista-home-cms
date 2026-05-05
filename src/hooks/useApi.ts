@@ -20,8 +20,10 @@ export const queryKeys = {
   productsAdmin: (params?: Record<string, unknown>) =>
     ["products", "admin", params ?? {}] as const,
   product: (id: string) => ["product", id] as const,
-  usersAdmin: (params?: Record<string, unknown>) =>
-    ["users", "admin", params ?? {}] as const,
+  usersAdminCustomers: (params?: Record<string, unknown>) =>
+    ["users", "admin", "customers", params ?? {}] as const,
+  usersAdminAdmins: (params?: Record<string, unknown>) =>
+    ["users", "admin", "admins", params ?? {}] as const,
 };
 
 // Dashboard stats
@@ -284,6 +286,8 @@ type ProductsAdminResponse = {
     name: string;
     slug?: string;
     price: number;
+    wholesalePrice?: number;
+    bulkWholesalePrice?: number;
     compareAtPrice?: number;
     images?: string[];
     coverImage?: string;
@@ -377,6 +381,8 @@ type ProductPayload = {
   /** Ảnh bìa / hero (tùy chọn) */
   coverImage?: string;
   price: number;
+  wholesalePrice?: number;
+  bulkWholesalePrice?: number;
   categories: string[];
   stock: number;
   isActive: boolean;
@@ -386,40 +392,97 @@ type ProductPayload = {
   variants: ProductVariantPayload[];
 };
 
-/** User (khách hàng / tài khoản) từ GET /users/admin — field có thể khác tùy backend */
-export type AdminUser = {
-  _id: string;
+/** Admin từ GET /users/admin/admins — shape cố định */
+export type AdminListItem = {
+  id: string;
+  email: string;
+  name?: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Khách / partner từ GET /users/admin/users — có thể có thêm field (hiển thị modal chi tiết) */
+export type CustomerUser = {
+  _id?: string;
+  id?: string;
   email?: string;
   name?: string;
   fullName?: string;
   phone?: string;
   avatar?: string;
   role?: string;
-  /** ID tài khoản Google (OAuth) */
   googleId?: string;
-  /** ID tài khoản Facebook (OAuth) */
   facebookId?: string;
   createdAt?: string;
   updatedAt?: string;
 };
 
-type UsersAdminResponse = {
-  data: AdminUser[];
+export type CustomerUserRecord = CustomerUser & Record<string, unknown>;
+
+export type CmsUserDetail = CustomerUserRecord | AdminListItem;
+
+/** ID dùng cho PATCH /users/admin/:id (BE có thể trả `id` hoặc `_id`) */
+export function cmsUserRecordId(u: { id?: string; _id?: string }): string {
+  const v = u.id ?? u._id;
+  if (typeof v === "string" && v.length > 0) return v;
+  if (v != null) return String(v);
+  return "";
+}
+
+type CustomersAdminResponse = {
+  data: CustomerUserRecord[];
   total: number;
   totalPages: number;
 };
 
-function normalizeUsersAdminPayload(raw: unknown): UsersAdminResponse {
+type AdminsAdminResponse = {
+  data: AdminListItem[];
+  total: number;
+  totalPages: number;
+};
+
+function normalizeAdminListItem(raw: unknown): AdminListItem | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const id = String(o.id ?? o._id ?? "");
+  if (!id) return null;
+  return {
+    id,
+    email: String(o.email ?? ""),
+    name: typeof o.name === "string" ? o.name : undefined,
+    role: String(o.role ?? "admin"),
+    createdAt: String(o.createdAt ?? ""),
+    updatedAt: String(o.updatedAt ?? ""),
+  };
+}
+
+function normalizeCustomerUser(raw: unknown): CustomerUserRecord {
+  if (!raw || typeof raw !== "object") return { _id: "" };
+  const o = { ...(raw as Record<string, unknown>) };
+  const idStr = String(o._id ?? o.id ?? "");
+  if (idStr) {
+    o._id = idStr;
+    o.id = idStr;
+  }
+  return o as CustomerUserRecord;
+}
+
+function normalizeCustomersAdminPayload(raw: unknown): CustomersAdminResponse {
   if (Array.isArray(raw)) {
+    const data = raw.map(normalizeCustomerUser);
     return {
-      data: raw as AdminUser[],
-      total: raw.length,
+      data,
+      total: data.length,
       totalPages: 1,
     };
   }
   if (raw && typeof raw === "object") {
     const o = raw as Record<string, unknown>;
-    const data = Array.isArray(o.data) ? (o.data as AdminUser[]) : [];
+    const arr = Array.isArray(o.data) ? o.data : [];
+    const data = arr
+      .map(normalizeCustomerUser)
+      .filter((u) => cmsUserRecordId(u).length > 0);
     return {
       data,
       total: Number(o.total ?? data.length),
@@ -429,15 +492,146 @@ function normalizeUsersAdminPayload(raw: unknown): UsersAdminResponse {
   return { data: [], total: 0, totalPages: 1 };
 }
 
-export function useUsersAdmin(params: { page?: number; limit?: number } = {}) {
-  const { page = 1, limit = 20 } = params;
+function normalizeAdminsAdminPayload(raw: unknown): AdminsAdminResponse {
+  if (Array.isArray(raw)) {
+    const data = raw
+      .map(normalizeAdminListItem)
+      .filter((x): x is AdminListItem => x != null);
+    return {
+      data,
+      total: data.length,
+      totalPages: 1,
+    };
+  }
+  if (raw && typeof raw === "object") {
+    const o = raw as Record<string, unknown>;
+    const arr = Array.isArray(o.data) ? o.data : [];
+    const data = arr
+      .map(normalizeAdminListItem)
+      .filter((x): x is AdminListItem => x != null);
+    return {
+      data,
+      total: Number(o.total ?? data.length),
+      totalPages: Number(o.totalPages ?? 1),
+    };
+  }
+  return { data: [], total: 0, totalPages: 1 };
+}
+
+function customersAdminQueryParams(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}) {
+  const { page = 1, limit = 20, search } = params;
+  return {
+    page,
+    limit,
+    ...(search?.trim() ? { search: search.trim() } : {}),
+  };
+}
+
+export function useCustomersAdmin(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  enabled?: boolean;
+} = {}) {
+  const { enabled = true, ...rest } = params;
+  const queryParams = customersAdminQueryParams(rest);
 
   return useQuery({
-    queryKey: queryKeys.usersAdmin({ page, limit }),
-    queryFn: async (): Promise<UsersAdminResponse> => {
-      const res = await api.get(endpoints.usersAdmin({ page, limit }));
-      return normalizeUsersAdminPayload(res.data);
+    queryKey: queryKeys.usersAdminCustomers(queryParams),
+    queryFn: async (): Promise<CustomersAdminResponse> => {
+      const res = await api.get(endpoints.usersAdminCustomers(queryParams));
+      return normalizeCustomersAdminPayload(res.data);
     },
+    enabled,
+  });
+}
+
+function adminsAdminQueryParams(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}) {
+  const { page = 1, limit = 20, search } = params;
+  return {
+    page,
+    limit,
+    ...(search?.trim() ? { search: search.trim() } : {}),
+  };
+}
+
+export function useAdminsAdmin(params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  enabled?: boolean;
+} = {}) {
+  const { enabled = true, ...rest } = params;
+  const queryParams = adminsAdminQueryParams(rest);
+
+  return useQuery({
+    queryKey: queryKeys.usersAdminAdmins(queryParams),
+    queryFn: async (): Promise<AdminsAdminResponse> => {
+      const res = await api.get(endpoints.usersAdminAdmins(queryParams));
+      return normalizeAdminsAdminPayload(res.data);
+    },
+    enabled,
+  });
+}
+
+export type CreateAdminPayload = {
+  email: string;
+  password: string;
+  name?: string;
+};
+
+export function useCreateAdminUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: CreateAdminPayload) =>
+      api.post(endpoints.usersAdminCreate(), {
+        email: body.email.trim(),
+        password: body.password,
+        ...(body.name?.trim() ? { name: body.name.trim() } : {}),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users", "admin"] });
+    },
+  });
+}
+
+export function useUpdateUserRoleAdmin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, role }: { id: string; role: string }) =>
+      api.patch(endpoints.userAdmin(id), { role }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users", "admin"] });
+    },
+  });
+}
+
+export function useSetUserPasswordAdmin() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      api.patch(endpoints.userAdminPassword(id), { password }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users", "admin"] });
+    },
+  });
+}
+
+export function useUpdateMyAdminPassword() {
+  return useMutation({
+    mutationFn: (body: { currentPassword: string; newPassword: string }) =>
+      api.patch(endpoints.userAdminMePassword(), body),
   });
 }
 

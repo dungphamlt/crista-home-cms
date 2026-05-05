@@ -32,6 +32,8 @@ type ProductFormData = {
   images: string[];
   coverImage: string;
   price: string;
+  wholesalePrice: string;
+  bulkWholesalePrice: string;
   categories: string[];
   stock: string;
   isActive: boolean;
@@ -72,6 +74,8 @@ export function ProductForm({
     images: [],
     coverImage: "",
     price: "",
+    wholesalePrice: "",
+    bulkWholesalePrice: "",
     categories: [],
     stock: "0",
     isActive: true,
@@ -100,6 +104,14 @@ export function ProductForm({
         images: product.images || [],
         coverImage: product.coverImage || "",
         price: String(product.price ?? ""),
+        wholesalePrice:
+          product.wholesalePrice != null
+            ? String(product.wholesalePrice)
+            : "",
+        bulkWholesalePrice:
+          product.bulkWholesalePrice != null
+            ? String(product.bulkWholesalePrice)
+            : "",
         categories: (product.categories || []).map(
           (c: { _id: string }) => c._id,
         ),
@@ -247,6 +259,14 @@ export function ProductForm({
         images: form.images,
         coverImage: form.coverImage.trim() || undefined,
         price: parseInt(form.price, 10) || 0,
+        wholesalePrice:
+          form.wholesalePrice.trim() === ""
+            ? undefined
+            : Math.max(0, parseInt(form.wholesalePrice, 10) || 0),
+        bulkWholesalePrice:
+          form.bulkWholesalePrice.trim() === ""
+            ? undefined
+            : Math.max(0, parseInt(form.bulkWholesalePrice, 10) || 0),
         categories: form.categories,
         stock: parseInt(form.stock, 10) || 0,
         isActive: form.isActive,
@@ -491,6 +511,28 @@ export function ProductForm({
             value={form.stock}
             onChange={(e) => update("stock", e.target.value)}
             min={0}
+            className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
+          />
+        </div>
+        <div>
+          <label className="block font-medium mb-2">Giá bán sỉ (VNĐ)</label>
+          <input
+            type="number"
+            value={form.wholesalePrice}
+            onChange={(e) => update("wholesalePrice", e.target.value)}
+            min={0}
+            placeholder="Tùy chọn"
+            className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
+          />
+        </div>
+        <div>
+          <label className="block font-medium mb-2">Giá sỉ lô / SL lớn (VNĐ)</label>
+          <input
+            type="number"
+            value={form.bulkWholesalePrice}
+            onChange={(e) => update("bulkWholesalePrice", e.target.value)}
+            min={0}
+            placeholder="Tùy chọn"
             className="w-full px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600"
           />
         </div>

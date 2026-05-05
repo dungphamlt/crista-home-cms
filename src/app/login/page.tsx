@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api, endpoints } from "@/lib/api";
+import { AUTH_ROLE_HINT_KEY } from "@/lib/auth-storage";
 import { useAuth } from "@/lib/auth-context";
 
 function getSafeNextPath(): string {
@@ -31,7 +32,18 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.post(endpoints.login(), { email, password });
-      setToken(res.data.access_token);
+      const accessToken = res.data.access_token as string;
+      setToken(accessToken);
+      try {
+        const u = res.data.user as { role?: string } | undefined;
+        if (u?.role != null && String(u.role).trim()) {
+          localStorage.setItem(AUTH_ROLE_HINT_KEY, String(u.role).trim());
+        } else {
+          localStorage.removeItem(AUTH_ROLE_HINT_KEY);
+        }
+      } catch {
+        /* ignore */
+      }
       // Full navigation so the cookie is sent on the next request; client router.push
       // can reach middleware before the browser attaches the new cookie.
       window.location.assign(getSafeNextPath());
@@ -55,7 +67,9 @@ export default function LoginPage() {
         </h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
+            <label className="block text-sm font-medium mb-2">
+              Username / Email
+            </label>
             <input
               type="email"
               value={email}
