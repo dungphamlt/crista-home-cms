@@ -16,7 +16,7 @@ function getSafeNextPath(): string {
 export default function LoginPage() {
   const router = useRouter();
   const { setToken, token, isReady } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -31,7 +31,13 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await api.post(endpoints.login(), { email, password });
+      const usernameTrim = username.trim();
+      const passwordTrim = password;
+      // Backend (AuthController) dùng DTO: { identifier: email|username, password }
+      const res = await api.post(endpoints.login(), {
+        identifier: usernameTrim,
+        password: passwordTrim,
+      });
       const accessToken = res.data.access_token as string;
       setToken(accessToken);
       try {
@@ -53,7 +59,7 @@ export default function LoginPage() {
           ? (err as { response?: { data?: { message?: string } } }).response
               ?.data?.message
           : "Đăng nhập thất bại";
-      setError(msg || "Email hoặc mật khẩu không đúng");
+      setError(msg || "Tên đăng nhập hoặc mật khẩu không đúng");
     } finally {
       setLoading(false);
     }
@@ -68,14 +74,15 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">
-              Username / Email
+              Tên đăng nhập
             </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
               className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+              placeholder="Username"
             />
           </div>
           <div>

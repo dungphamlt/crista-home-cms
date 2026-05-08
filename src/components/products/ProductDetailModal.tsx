@@ -276,7 +276,7 @@ export function ProductDetailModal({
                       )}
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                         <span className="font-medium text-gray-700 dark:text-gray-300">
-                          Tồn kho:
+                          Số lượng:
                         </span>{" "}
                         <span className="tabular-nums font-medium text-gray-900 dark:text-gray-100">
                           {currentVariant.stock ?? 0}
@@ -342,15 +342,14 @@ export function ProductDetailModal({
                       )}
                     <p>
                       <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {variants.length > 0 ? "Tổng tồn kho:" : "Tồn kho:"}
+                        Tổng số lượng:
                       </span>{" "}
                       <span className="tabular-nums">
-                        {variants.length > 0
-                          ? variants.reduce(
-                              (sum, v) => sum + (Number(v.stock) || 0),
-                              0,
-                            )
-                          : (product.stock ?? 0)}
+                        {(Number(product.stock) || 0) +
+                          variants.reduce(
+                            (sum, v) => sum + (Number(v.stock) || 0),
+                            0,
+                          )}
                       </span>
                     </p>
                     <div className="flex gap-2 mt-2">
@@ -433,7 +432,7 @@ export function ProductDetailModal({
                           <th className="text-left p-3">Tên</th>
                           <th className="text-left p-3">Giá trị</th>
                           <th className="text-left p-3">SKU</th>
-                          <th className="text-right p-3">Tồn</th>
+                          <th className="text-right p-3">Số lượng</th>
                           <th className="text-left p-3">Ảnh</th>
                         </tr>
                       </thead>

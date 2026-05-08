@@ -395,7 +395,7 @@ type ProductPayload = {
 /** Admin từ GET /users/admin/admins — shape cố định */
 export type AdminListItem = {
   id: string;
-  email: string;
+  username?: string;
   name?: string;
   role: string;
   createdAt: string;
@@ -407,6 +407,7 @@ export type CustomerUser = {
   _id?: string;
   id?: string;
   email?: string;
+  username?: string;
   name?: string;
   fullName?: string;
   phone?: string;
@@ -449,7 +450,7 @@ function normalizeAdminListItem(raw: unknown): AdminListItem | null {
   if (!id) return null;
   return {
     id,
-    email: String(o.email ?? ""),
+    username: typeof o.username === "string" ? o.username : undefined,
     name: typeof o.name === "string" ? o.name : undefined,
     role: String(o.role ?? "admin"),
     createdAt: String(o.createdAt ?? ""),
@@ -531,12 +532,14 @@ function customersAdminQueryParams(params: {
   };
 }
 
-export function useCustomersAdmin(params: {
-  page?: number;
-  limit?: number;
-  search?: string;
-  enabled?: boolean;
-} = {}) {
+export function useCustomersAdmin(
+  params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    enabled?: boolean;
+  } = {},
+) {
   const { enabled = true, ...rest } = params;
   const queryParams = customersAdminQueryParams(rest);
 
@@ -554,12 +557,14 @@ function adminsAdminQueryParams(params: {
   page?: number;
   limit?: number;
   search?: string;
+  role?: string;
 }) {
-  const { page = 1, limit = 20, search } = params;
+  const { page = 1, limit = 20, search, role } = params;
   return {
     page,
     limit,
     ...(search?.trim() ? { search: search.trim() } : {}),
+    ...(role?.trim() ? { role: role.trim() } : {}),
   };
 }
 
@@ -583,21 +588,31 @@ export function useAdminsAdmin(params: {
 }
 
 export type CreateAdminPayload = {
-  email: string;
+  username: string;
   password: string;
   name?: string;
+  role?: string;
 };
 
 export function useCreateAdminUser() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (body: CreateAdminPayload) =>
-      api.post(endpoints.usersAdminCreate(), {
-        email: body.email.trim(),
+    mutationFn: (body: CreateAdminPayload) => {
+      if (body.role === "partner") {
+        return api.post(endpoints.usersAdminCreatePartner(), {
+          username: (body.username || "").trim(),
+          password: body.password,
+          name: body.name?.trim() || undefined,
+        });
+      }
+      return api.post(endpoints.usersAdminCreate(), {
+        username: (body.username || "").trim(),
         password: body.password,
-        ...(body.name?.trim() ? { name: body.name.trim() } : {}),
-      }),
+        role: body.role || "admin",
+        name: body.name?.trim() || undefined,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["users", "admin"] });
     },

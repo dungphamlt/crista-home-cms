@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api, endpoints } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Chờ xác nhận',
@@ -32,8 +33,9 @@ export default function OrdersPage() {
       setOrders((prev) =>
         prev.map((o) => (o._id === id ? { ...o, status } : o))
       );
+      toast.success('Đã cập nhật trạng thái đơn hàng');
     } catch {
-      alert('Cập nhật thất bại');
+      toast.error('Cập nhật thất bại');
     }
   };
 

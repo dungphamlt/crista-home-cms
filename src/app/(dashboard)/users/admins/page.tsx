@@ -15,7 +15,7 @@ import { CreateAdminModal } from "@/components/users/CreateAdminModal";
 const PAGE_SIZE = 20;
 
 function displayName(u: AdminListItem): string {
-  return u.name?.trim() || u.email || u.id;
+  return u.name?.trim() || u.username || u.id;
 }
 
 export default function AdminUsersPage() {
@@ -71,7 +71,7 @@ export default function AdminUsersPage() {
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Email hoặc tên..."
+              placeholder="Tên hoặc tên đăng nhập..."
               className="px-3 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-600 text-sm min-w-[200px]"
             />
             <button
@@ -115,7 +115,7 @@ export default function AdminUsersPage() {
               <table className="w-full min-w-[520px]">
                 <thead className="bg-gray-100 dark:bg-gray-700">
                   <tr>
-                    <th className="text-left p-4 font-semibold">Tên / Email</th>
+                    <th className="text-left p-4 font-semibold">Tên / Tên đăng nhập</th>
                     <th className="text-left p-4 font-semibold">Vai trò</th>
                     <th className="text-left p-4 font-semibold">Ngày tạo</th>
                     <th className="text-right p-4 font-semibold">Thao tác</th>
@@ -140,9 +140,9 @@ export default function AdminUsersPage() {
                         >
                           <td className="p-4">
                             <div className="font-medium">{displayName(u)}</div>
-                            {u.email && (
+                            {u.username && (
                               <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {u.email}
+                                {u.username}
                               </div>
                             )}
                           </td>

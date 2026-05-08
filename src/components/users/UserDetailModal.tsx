@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import toast from "react-hot-toast";
 import {
   type CmsUserDetail,
   cmsUserRecordId,
@@ -47,6 +48,7 @@ const KEY_LABELS: Record<string, string> = {
   _id: "ID",
   id: "ID",
   email: "Email",
+  username: "Tên đăng nhập",
   name: "Tên",
   fullName: "Họ tên",
   phone: "Số điện thoại",
@@ -189,8 +191,21 @@ export function UserDetailModal({
 
   const showPasswordReset = canAdminSetPassword(user.role);
 
+  const role = normalizeRole(user.role);
   const entries = Object.entries(user as Record<string, unknown>).filter(
-    ([k]) => !isSensitiveFieldKey(k),
+    ([k]) => {
+      if (isSensitiveFieldKey(k)) return true;
+      if (k === "email" && (role === "admin" || role === "partner")) return true;
+      return false;
+    }
+  );
+
+  const filteredEntries = Object.entries(user as Record<string, unknown>).filter(
+    ([k]) => {
+      if (isSensitiveFieldKey(k)) return false;
+      if (k === "email" && (role === "admin" || role === "partner")) return false;
+      return true;
+    }
   );
 
   const handleSaveRole = async () => {
@@ -199,20 +214,20 @@ export function UserDetailModal({
     try {
       await updateRole.mutateAsync({ id: recordId, role: roleDraft });
       onUserUpdated?.({ ...user, role: roleDraft });
-      alert("Đã cập nhật vai trò");
+      toast.success("Đã cập nhật vai trò");
     } catch (e) {
-      alert(axiosMessage(e));
+      toast.error(axiosMessage(e));
     }
   };
 
   const handleSavePassword = async () => {
     if (!canAdminSetPassword(user.role)) return;
     if (newPassword.length < 8) {
-      alert("Mật khẩu tối thiểu 8 ký tự");
+      toast.error("Mật khẩu tối thiểu 8 ký tự");
       return;
     }
     if (newPassword !== confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp");
+      toast.error("Mật khẩu xác nhận không khớp");
       return;
     }
     const recordId = cmsUserRecordId(user);
@@ -221,9 +236,9 @@ export function UserDetailModal({
       await setPassword.mutateAsync({ id: recordId, password: newPassword });
       setNewPassword("");
       setConfirmPassword("");
-      alert("Đã đặt mật khẩu mới");
+      toast.success("Đã đặt mật khẩu mới");
     } catch (e) {
-      alert(axiosMessage(e));
+      toast.error(axiosMessage(e));
     }
   };
 
@@ -248,7 +263,7 @@ export function UserDetailModal({
         </div>
         <div className="flex-1 overflow-y-auto p-6">
           <dl className="space-y-3 text-sm">
-            {entries.map(([key, value]) => (
+            {filteredEntries.map(([key, value]) => (
               <div
                 key={key}
                 className="grid grid-cols-[minmax(0,7.5rem)_1fr] gap-3 border-b border-gray-100 dark:border-gray-700 pb-3 last:border-0"
@@ -272,7 +287,7 @@ export function UserDetailModal({
                 <select
                   value={roleDraft}
                   onChange={(e) => setRoleDraft(e.target.value)}
-                  className="px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm min-w-[10rem]"
+                  className="px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm min-w-40"
                 >
                   {ROLE_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useUpdateMyAdminPassword } from "@/hooks/useApi";
+import toast from "react-hot-toast";
 
 function getErrMessage(err: unknown): string {
   const r = err as { response?: { data?: { message?: string } } };
@@ -18,11 +19,11 @@ export default function ChangePasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 8) {
-      alert("Mật khẩu mới cần ít nhất 8 ký tự");
+      toast.error("Mật khẩu mới cần ít nhất 8 ký tự");
       return;
     }
     if (newPassword !== confirm) {
-      alert("Mật khẩu mới và xác nhận không khớp");
+      toast.error("Mật khẩu mới và xác nhận không khớp");
       return;
     }
     try {
@@ -30,9 +31,9 @@ export default function ChangePasswordPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirm("");
-      alert("Đã đổi mật khẩu");
+      toast.success("Đã đổi mật khẩu");
     } catch (err) {
-      alert(getErrMessage(err));
+      toast.error(getErrMessage(err));
     }
   };
 

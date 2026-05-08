@@ -10,9 +10,16 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("admin_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Không gắn Authorization cho request đăng nhập,
+    // tránh trường hợp token cũ làm BE trả 401 ngay cả khi login.
+    const url = String(config.url ?? "");
+    const isLoginRequest = url.includes("/auth/login");
+
+    if (!isLoginRequest) {
+      const token = localStorage.getItem("admin_token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
   }
   return config;
@@ -145,8 +152,10 @@ export const endpoints = {
     return `/users/admin/admins${search ? `?${search}` : ""}`;
   },
   usersAdminMe: () => "/users/admin/me",
-  /** POST — body `{ email, password, name? }` */
+  /** POST — body `{ username, password, name? }` */
   usersAdminCreate: () => "/users/admin",
+  /** POST — body `{ username, password, name? }` */
+  usersAdminCreatePartner: () => "/users/partner",
   userAdmin: (id: string) => `/users/admin/${id}`,
   userAdminMePassword: () => "/users/admin/me/password",
   userAdminPassword: (id: string) => `/users/admin/${id}/password`,

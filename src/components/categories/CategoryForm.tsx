@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { postService } from "@/services/postService";
 import { useCategoriesAdmin, useCategory, useSaveCategory } from "@/hooks/useApi";
+import toast from "react-hot-toast";
 
 type CategoryFormData = {
   name: string;
@@ -78,6 +79,7 @@ export function CategoryForm({
         image: form.image || undefined,
       };
       await saveCategory.mutateAsync(payload);
+      toast.success("Lưu danh mục thành công");
       onSuccess();
     } catch (err: unknown) {
       const msg =
@@ -85,7 +87,7 @@ export function CategoryForm({
           ? (err as { response?: { data?: { message?: string } } }).response?.data
               ?.message
           : "Lưu thất bại";
-      alert(msg || "Lưu thất bại");
+      toast.error(msg || "Lưu thất bại");
     } finally {
       setLoading(false);
     }

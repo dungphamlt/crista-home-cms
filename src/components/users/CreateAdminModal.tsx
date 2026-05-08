@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useCreateAdminUser } from "@/hooks/useApi";
+import toast from "react-hot-toast";
 
 type CreateAdminModalProps = {
   open: boolean;
   onClose: () => void;
+  role?: string;
 };
 
 function axiosMessage(err: unknown): string {
@@ -13,15 +15,19 @@ function axiosMessage(err: unknown): string {
   return r.response?.data?.message ?? "Thất bại";
 }
 
-export function CreateAdminModal({ open, onClose }: CreateAdminModalProps) {
+export function CreateAdminModal({
+  open,
+  onClose,
+  role = "admin",
+}: CreateAdminModalProps) {
   const createAdmin = useCreateAdminUser();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
 
   useEffect(() => {
     if (open) {
-      setEmail("");
+      setUsername("");
       setPassword("");
       setName("");
     }
@@ -45,24 +51,28 @@ export function CreateAdminModal({ open, onClose }: CreateAdminModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) {
-      alert("Nhập email");
+    const val = username.trim();
+    if (!val) {
+      toast.error("Nhập tên đăng nhập");
       return;
     }
     if (password.length < 8) {
-      alert("Mật khẩu tối thiểu 8 ký tự");
+      toast.error("Mật khẩu tối thiểu 8 ký tự");
       return;
     }
     try {
       await createAdmin.mutateAsync({
-        email: email.trim(),
+        username: val,
         password,
         name: name.trim() || undefined,
+        role,
       });
-      alert("Đã tạo tài khoản admin");
+      toast.success(
+        `Đã tạo tài khoản ${role === "partner" ? "partner" : "admin"}`
+      );
       onClose();
     } catch (err) {
-      alert(axiosMessage(err));
+      toast.error(axiosMessage(err));
     }
   };
 
@@ -76,7 +86,9 @@ export function CreateAdminModal({ open, onClose }: CreateAdminModalProps) {
         onClick={(ev) => ev.stopPropagation()}
       >
         <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
-          <h2 className="text-lg font-bold">Thêm admin mới</h2>
+          <h2 className="text-lg font-bold">
+            Thêm {role === "partner" ? "partner" : "admin"} mới
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -87,15 +99,17 @@ export function CreateAdminModal({ open, onClose }: CreateAdminModalProps) {
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Email *</label>
+            <label className="block text-sm font-medium mb-1">
+              Tên đăng nhập *
+            </label>
             <input
-              type="email"
+              type="text"
               required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm"
-              placeholder="admin@example.com"
+              placeholder="VD: admin01"
             />
           </div>
           <div>
@@ -126,7 +140,9 @@ export function CreateAdminModal({ open, onClose }: CreateAdminModalProps) {
             disabled={createAdmin.isPending}
             className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg font-medium text-sm"
           >
-            {createAdmin.isPending ? "Đang tạo..." : "Tạo admin"}
+            {createAdmin.isPending
+              ? "Đang tạo..."
+              : `Tạo ${role === "partner" ? "partner" : "admin"}`}
           </button>
         </form>
       </div>

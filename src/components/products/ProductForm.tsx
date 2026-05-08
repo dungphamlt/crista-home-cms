@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { api, endpoints } from "@/lib/api";
 import { postService } from "@/services/postService";
 import { useCategoriesAdmin, useProduct, useSaveProduct } from "@/hooks/useApi";
+import toast from "react-hot-toast";
 
 const CkEditor = dynamic(() => import("@/components/ckeditor"), {
   ssr: false,
@@ -292,7 +293,7 @@ export function ProductForm({
           ? (err as { response?: { data?: { message?: string } } }).response
               ?.data?.message
           : "Lưu thất bại";
-      alert(msg || "Lưu thất bại");
+      toast.error(msg || "Lưu thất bại");
     } finally {
       setLoading(false);
     }
@@ -505,7 +506,7 @@ export function ProductForm({
           />
         </div>
         <div>
-          <label className="block font-medium mb-2">Tồn kho</label>
+          <label className="block font-medium mb-2">Số lượng</label>
           <input
             type="number"
             value={form.stock}
@@ -616,7 +617,7 @@ export function ProductForm({
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">
-                  Tồn kho
+                  Số lượng
                 </label>
                 <input
                   type="number"

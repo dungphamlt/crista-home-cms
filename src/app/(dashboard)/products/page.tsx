@@ -9,6 +9,7 @@ import {
   useDeleteProduct,
 } from "@/hooks/useApi";
 import { ProductDetailModal } from "@/components/products/ProductDetailModal";
+import toast from "react-hot-toast";
 
 const PAGE_SIZE = 10;
 
@@ -16,10 +17,10 @@ function displayStock(
   productStock: number | undefined,
   variants: { stock?: number }[] | undefined,
 ) {
-  if (variants?.length) {
-    return variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
-  }
-  return productStock ?? 0;
+  const base = Number(productStock) || 0;
+  const variantsTotal =
+    variants?.reduce((sum, v) => sum + (Number(v.stock) || 0), 0) || 0;
+  return base + variantsTotal;
 }
 
 export default function ProductsPage() {
@@ -59,8 +60,9 @@ export default function ProductsPage() {
     if (!confirm(`Xóa sản phẩm "${name}"?`)) return;
     try {
       await deleteProduct.mutateAsync(id);
+      toast.success(`Đã xóa sản phẩm "${name}"`);
     } catch {
-      alert("Xóa thất bại");
+      toast.error("Xóa thất bại");
     }
   };
 
@@ -188,10 +190,11 @@ export default function ProductsPage() {
               <tr>
                 <th className="text-left p-4 w-16">Ảnh</th>
                 <th className="text-left p-4 w-24">Mã SP</th>
-                <th className="text-left p-4 min-w-[200px]">Tên</th>
+                <th className="text-left p-4 min-w-[200px] max-w-[250px]">Tên</th>
                 <th className="text-left p-4">Giá</th>
-                <th className="text-left p-4 w-28">Số biến thể</th>
-                <th className="text-left p-4">Tồn kho</th>
+                <th className="text-left p-4">Giá sỉ</th>
+                <th className="text-left p-4">Số biến thể</th>
+                <th className="text-left p-4">Số lượng</th>
                 <th className="text-left p-4">Trạng thái</th>
                 <th className="text-right p-4">Thao tác</th>
               </tr>
@@ -226,16 +229,23 @@ export default function ProductsPage() {
                     </span>
                   </td>
                   <td
-                    className="p-4 min-w-[200px]"
+                    className="p-4 min-w-[200px] max-w-[250px]"
                     onClick={() => setViewingProductId(p._id)}
                   >
-                    <p className="font-medium line-clamp-2 cursor-pointer hover:underline">
+                    <p className="font-medium text-sm line-clamp-2 cursor-pointer hover:underline">
                       {p.name}
                     </p>
                   </td>
                   <td className="p-4">
                     <span className="text-red-600 font-medium">
                       {new Intl.NumberFormat("vi-VN").format(p.price)}đ
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-amber-600 font-medium text-sm">
+                      {p.wholesalePrice
+                        ? `${new Intl.NumberFormat("vi-VN").format(p.wholesalePrice)}đ`
+                        : "-"}
                     </span>
                   </td>
                   <td className="p-4 tabular-nums">
@@ -258,19 +268,19 @@ export default function ProductsPage() {
                   <td className="p-4 text-right space-x-2">
                     <button
                       onClick={() => setViewingProductId(p._id)}
-                      className="text-blue-600 hover:underline"
+                      className="text-blue-600 cursor-pointer text-sm bg-blue-100 rounded-md px-2 py-1 hover:bg-blue-200"
                     >
                       Xem
                     </button>
                     <Link
                       href={`/products/${p._id}`}
-                      className="text-amber-600 hover:underline"
+                      className="inline-block text-amber-600 text-sm bg-amber-100 rounded-md px-2 py-1 hover:bg-amber-200"
                     >
                       Sửa
                     </Link>
                     <button
                       onClick={() => handleDelete(p._id, p.name)}
-                      className="text-red-600 hover:underline"
+                      className="text-red-600 cursor-pointer text-sm bg-red-100 rounded-md px-2 py-1 hover:bg-red-200"
                     >
                       Xóa
                     </button>
